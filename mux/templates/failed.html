@@ -1,0 +1,49 @@
+<html>
+
+<body>
+    <h1>Failed Jobs</h1>
+
+    <ul class="failed">
+{{range .failed}}
+        <li class="">
+            <dl>
+                <dt>Worker</dt>
+                <dd>
+                    <a href="/workers/{{.Worker}}">{{.Worker}}</a> on <b class="queue-tag">{{.Queue}}</b>
+                    at <b><span class="time"><a href="#" class="toggle_format" title="{{.FailedAt}}"><span
+                                    class="relatized_time" style="display: inline;">{{.FailedAt}}</span></a></span></b>
+
+                </dd>
+                <dt>Class</dt>
+                <dd>
+
+                    <a href="/failed/?class={{.Class}}">
+                        <code>{{.Class}}</code>
+
+                    </a>
+
+                </dd>
+                <dt>Arguments</dt>
+                <dd>
+                    <pre>--- {{.Arguments}}
+    </pre>
+                </dd>
+                <dt>Exception</dt>
+                <dd><code>{{.Exception}}</code></dd>
+                <dt>Error</dt>
+                <dd class="error">
+
+                    <a href="#" class="backtrace">{{.Error}}</a>
+{{range .Backtrace}}
+                    <pre style="">{{.}}</pre>
+{{end}}
+                </dd>
+
+            </dl>
+        </li>
+{{end}}
+
+    </ul>
+</body>
+
+</html>

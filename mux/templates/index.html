@@ -1,0 +1,50 @@
+<html>
+
+<body>
+    <h1>Queues</h1>
+    <table class="queues">
+        <tbody>
+            <tr>
+                <th>Name</th>
+                <th>Jobs</th>
+            </tr>
+{{range .queues}}
+            <tr>
+                <td class="queue"><a class="queue" href="/queues/{{.Name}}">{{.Name}}</a></td>
+                <td class="size">{{.Jobs}}</td>
+            </tr>
+{{end}}
+
+            <tr class="failure">
+                <td class="queue failed"><a class="queue" href="/failed">failed</a></td>
+                <td class="size">{{.failed}}</td>
+            </tr>
+
+        </tbody>
+    </table>
+
+    <h1>{{len .workers}} of {{.totalWorkers}} Workers Working</h1>
+    <table class="workers">
+        <tbody>
+            <tr>
+                <th>Where</th>
+                <th>Queue</th>
+                <th>Processing</th>
+            </tr>
+{{range .workers}}
+            <tr>
+                <td class="where"><a href="/workers/{{.Where}}">{{.Where}}</a></td>
+                <td class="queues queue">
+                    <a class="queue-tag" href="/queues/{{.Queue}}">{{.Queue}}</a>
+                </td>
+                <td class="process">
+                    <code>{{.Class}}</code>
+                    <small><a class="queue time relatized" href="/working/{{.Where}}" title="{{.RunAt}}">{{.RunAt}}</a></small>
+                </td>
+            </tr>
+{{end}}
+        </tbody>
+    </table>
+</body>
+
+</html>
