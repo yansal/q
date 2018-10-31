@@ -1,50 +1,50 @@
-<html>
-
-<body>
-    <h1>Queues</h1>
-    <table class="queues">
-        <tbody>
-            <tr>
-                <th>Name</th>
-                <th>Jobs</th>
-            </tr>
-{{range .queues}}
-            <tr>
-                <td class="queue"><a class="queue" href="/queues/{{.Name}}">{{.Name}}</a></td>
-                <td class="size">{{.Jobs}}</td>
-            </tr>
+<h1>Queues</h1>
+<table border="1">
+    <tr>
+        <th align="center">name</th>
+        <th align="center">len</th>
+    </tr>
+    {{range $key, $value := .Queues}}
+    <tr valign="top">
+        <td align="left">{{$key}}</td>
+        <td align="right">{{$value}}</td>
+    </tr>
+</table>
 {{end}}
 
-            <tr class="failure">
-                <td class="queue failed"><a class="queue" href="/failed">failed</a></td>
-                <td class="size">{{.failed}}</td>
-            </tr>
+<h1>Workers</h1>
+<table border="1">
+    <tr>
+        <th align="center">name</th>
+        <th align="center">processed</th>
+        <th align="center">failed</th>
+    </tr>
+    {{range $key, $value := .Workers}}
+    <tr valign="top">
+        <td align="left">{{$key}}</td>
+        <td align="right">{{$value.Processed}}</td>
+        <td align="right">{{$value.Failed}}</td>
+    </tr>
+    {{end}}
+</table>
 
-        </tbody>
-    </table>
 
-    <h1>{{len .workers}} of {{.totalWorkers}} Workers Working</h1>
-    <table class="workers">
-        <tbody>
-            <tr>
-                <th>Where</th>
-                <th>Queue</th>
-                <th>Processing</th>
-            </tr>
-{{range .workers}}
-            <tr>
-                <td class="where"><a href="/workers/{{.Where}}">{{.Where}}</a></td>
-                <td class="queues queue">
-                    <a class="queue-tag" href="/queues/{{.Queue}}">{{.Queue}}</a>
-                </td>
-                <td class="process">
-                    <code>{{.Class}}</code>
-                    <small><a class="queue time relatized" href="/working/{{.Where}}" title="{{.RunAt}}">{{.RunAt}}</a></small>
-                </td>
-            </tr>
-{{end}}
-        </tbody>
-    </table>
-</body>
-
-</html>
+<h1>Failed</h1>
+<table border="1">
+    <tr>
+        <th align="center">payload</th>
+        <th align="center">created at</th>
+        <th align="center">failed at</th>
+        <th align="center">error</th>
+    </tr>
+    {{range $key, $value := .Failed}}
+    <tr valign="top">
+        <td align="left">{{$value.Payload}}</td>
+        <td align="left">{{$value.CreatedAt}}</td>
+        <td align="left">{{$value.FailedAt}}</td>
+        <td align="left"><pre>{{$value.Error}}</pre></td>
+        <td align="left"><button>retry</td>
+        <td align="left"><button>delete</td>
+    </tr>
+    {{end}}
+</table>

@@ -25,6 +25,7 @@ func init() {
 		"dashboard": {run: dashboard, usage: "run dashboard http server"},
 		"publish":   {run: publish, usage: "publish a message to a queue"},
 		"receive":   {run: receive, usage: "run queue receiver"},
+		"stats":     {run: stats, usage: "print stats"},
 	}
 }
 

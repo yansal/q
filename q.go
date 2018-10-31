@@ -9,10 +9,7 @@ import (
 type Q interface {
 	Publish(ctx context.Context, queue, payload string) error
 	Receive(ctx context.Context, queue string, handler Handler) error
-
-	Queues() ([]Queue, int64, error)
-	Workers() ([]Worker, int64, error)
-	Failed(offset int64) ([]Failed, int64, error)
+	Stats(ctx context.Context) (Stats, error)
 }
 
 type Handler func(ctx context.Context, message Message) error
@@ -26,23 +23,17 @@ type Message struct {
 func (message Message) MarshalBinary() ([]byte, error)     { return json.Marshal(message) }
 func (message *Message) UnmarshalBinary(data []byte) error { return json.Unmarshal(data, message) }
 
-type Queue struct {
-	Name string
-	Jobs int64
+type Stats struct {
+	Failed []Message
+	Queues map[string]int64
+	Stats  struct {
+		Processed int64
+		Failed    int64
+	}
+	Workers map[string]Worker
 }
+
 type Worker struct {
-	Where string
-	Queue string
-	Class string
-	RunAt time.Time
-}
-type Failed struct {
-	Worker    string
-	Queue     string
-	FailedAt  string
-	Class     string
-	Arguments []struct{}
-	Exception string
-	Error     string
-	Backtrace []string
+	Processed int64
+	Failed    int64
 }

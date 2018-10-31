@@ -64,7 +64,7 @@ func debugHandler(ctx context.Context, message q.Message) error {
 }
 
 func errorHandler(ctx context.Context, message q.Message) error {
-	return errors.Errorf("%+v", message)
+	return errors.Errorf("%+v", message.Payload)
 }
 
 func sleepHandler(ctx context.Context, message q.Message) error {

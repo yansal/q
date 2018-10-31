@@ -23,8 +23,7 @@ func New(q q.Q) (*http.ServeMux, error) {
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/failed", failedHandler(q, template))
-	mux.Handle("/", rootHandler(q, template))
+	mux.Handle("/", handleError(handler(q, template)))
 	return mux, nil
 }
 
@@ -39,37 +38,13 @@ func handleError(h handlerFunc) http.HandlerFunc {
 	}
 }
 
-func failedHandler(q q.Q, template *template.Template) http.HandlerFunc {
-	return handleError(func(w http.ResponseWriter, r *http.Request) error {
-		var offset int64
-		failed, count, err := q.Failed(offset)
+func handler(q q.Q, template *template.Template) handlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) error {
+		ctx := r.Context()
+		stats, err := q.Stats(ctx)
 		if err != nil {
-			return errors.WithStack(err)
+			return err
 		}
-
-		return errors.WithStack(template.ExecuteTemplate(w, "failed.html", map[string]interface{}{
-			"failed": failed,
-			"count":  count,
-		}))
-	})
-}
-
-func rootHandler(q q.Q, template *template.Template) http.HandlerFunc {
-	return handleError(func(w http.ResponseWriter, r *http.Request) error {
-		queues, failed, err := q.Queues()
-		if err != nil {
-			return errors.WithStack(err)
-		}
-		workers, totalWorkers, err := q.Workers()
-		if err != nil {
-			return errors.WithStack(err)
-		}
-
-		return errors.WithStack(template.ExecuteTemplate(w, "index.html", map[string]interface{}{
-			"queues":       queues,
-			"failed":       failed,
-			"workers":      workers,
-			"totalWorkers": totalWorkers,
-		}))
-	})
+		return errors.WithStack(template.ExecuteTemplate(w, "index.html", stats))
+	}
 }

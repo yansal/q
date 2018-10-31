@@ -2,15 +2,24 @@ package q
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
-	"strings"
+	"strconv"
 	"time"
 
 	"github.com/go-redis/redis"
 	"github.com/pkg/errors"
+)
+
+const (
+	qFailed     = "q:failed"
+	qProcessing = "q:processing"
+	qQueue      = "q:queues"
+	qQueues     = "q:queues"
+	qStats      = "q:stats"
+	qWorker     = "q:worker"
+	qWorkers    = "q:workers"
 )
 
 func New(client *redis.Client) Q {
@@ -22,61 +31,44 @@ type qredis struct {
 }
 
 func (q *qredis) Publish(ctx context.Context, queue, payload string) error {
+	self := qQueue + ":" + queue
+	if _, err := q.redis.SAdd(qQueues, self).Result(); err != nil {
+		return errors.WithStack(err)
+	}
 	return errors.WithStack(
-		q.redis.LPush(queue, Message{
+		q.redis.LPush(self, Message{
 			Payload:   payload,
 			CreatedAt: time.Now(),
 		}).Err())
 }
-
-const (
-	workers = "q:workers"
-)
 
 func (q *qredis) Receive(ctx context.Context, queue string, handler Handler) error {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return errors.WithStack(err)
 	}
-	self := fmt.Sprintf("%s:%d:%s:%d", hostname, os.Getpid(), queue, time.Now().UnixNano())
-	processing := "q:worker:" + self
+	name := fmt.Sprintf("%s:%d:%s:%d", hostname, os.Getpid(), queue, time.Now().UnixNano())
+	self := qWorker + ":" + name
+	processing := qProcessing + ":" + name
 
-	n, err := q.redis.SAdd(workers, self).Result()
-	if err != nil {
+	if _, err := q.redis.SAdd(qWorkers, self).Result(); err != nil {
 		return errors.WithStack(err)
 	}
-	if n != 1 {
-		return errors.Errorf("expected 1 element to be added, got %d", n)
-	}
 	defer func() {
-		n, err := q.redis.SRem(workers, self).Result()
+		n, err := q.redis.SRem(qWorkers, self).Result()
 		if err != nil {
 			log.Printf("%+v", errors.WithStack(err))
 		}
 		if n != 1 {
 			log.Printf("%+v", errors.Errorf("expected 1 element to be removed, got %d", n))
 		}
-	}()
 
-	started := "q:worker:" + self + ":started"
-	if err := q.redis.Set(started, time.Now().String(), 0).Err(); err != nil {
-		return errors.WithStack(err)
-	}
-	defer func() {
-		n, err := q.redis.Del(started).Result()
+		n, err = q.redis.Del(self).Result()
 		if err != nil {
 			log.Printf("%+v", errors.WithStack(err))
 		}
-		if n != 1 {
-			log.Printf("%+v", errors.Errorf("expected 1 key to be removed, got %d", n))
-		}
-	}()
-
-	statProcessed := "q:stat:processed:" + self
-	statFailed := "q:stat:failed:" + self
-	defer func() {
-		if err := q.redis.Del(statProcessed, statFailed).Err(); err != nil {
-			log.Printf("%+v", errors.WithStack(err))
+		if n > 1 {
+			log.Printf("%+v", errors.Errorf("expected 1 element to be removed, got %d", n))
 		}
 	}()
 
@@ -90,7 +82,7 @@ func (q *qredis) Receive(ctx context.Context, queue string, handler Handler) err
 		go func() {
 			var message Message
 			err := errors.WithStack(
-				q.redis.BRPopLPush(queue, processing, 0).Scan(&message))
+				q.redis.BRPopLPush(qQueue+":"+queue, processing, 0).Scan(&message))
 			brpoplpush <- msg{
 				message: message,
 				err:     err,
@@ -127,14 +119,14 @@ func (q *qredis) Receive(ctx context.Context, queue string, handler Handler) err
 			}
 
 			if err := errors.WithStack(
-				q.redis.LPush("q:failed", message).Err()); err != nil {
+				q.redis.LPush(qFailed, message).Err()); err != nil {
 				return err
 			}
 
-			if err := q.redis.Incr("q:stat:failed").Err(); err != nil {
+			if err := q.redis.HIncrBy(qStats, "failed", 1).Err(); err != nil {
 				return errors.WithStack(err)
 			}
-			if err := q.redis.Incr(statFailed).Err(); err != nil {
+			if err := q.redis.HIncrBy(self, "failed", 1).Err(); err != nil {
 				return errors.WithStack(err)
 			}
 		}
@@ -147,124 +139,70 @@ func (q *qredis) Receive(ctx context.Context, queue string, handler Handler) err
 			return errors.Errorf("expected 1 element to be removed, got %d", n)
 		}
 
-		if err := q.redis.Incr("q:stat:processed").Err(); err != nil {
+		if err := q.redis.HIncrBy(self, "processed", 1).Err(); err != nil {
 			return errors.WithStack(err)
 		}
-		if err := q.redis.Incr(statProcessed).Err(); err != nil {
+		if err := q.redis.HIncrBy(qStats, "processed", 1).Err(); err != nil {
 			return errors.WithStack(err)
 		}
 	}
 }
 
-func (q *qredis) Queues() ([]Queue, int64, error) {
-	smembers, err := q.redis.SMembers("resque:queues").Result()
-	if err != nil {
-		return nil, 0, errors.WithStack(err)
-	}
+func (q *qredis) Stats(ctx context.Context) (Stats, error) {
+	var stats Stats
 
-	queues := make([]Queue, len(smembers))
-	for i, name := range smembers {
-		llen, err := q.redis.LLen("resque:queue:" + name).Result()
+	members, err := q.redis.SMembers(qQueues).Result()
+	if err != nil {
+		return stats, errors.WithStack(err)
+	}
+	stats.Queues = make(map[string]int64, len(members))
+	for i := range members {
+		llen, err := q.redis.LLen(members[i]).Result()
 		if err != nil {
-			return nil, 0, errors.WithStack(err)
+			return stats, errors.WithStack(err)
 		}
-		queues[i] = Queue{Name: name, Jobs: llen}
+		stats.Queues[members[i]] = llen
 	}
 
-	llen, err := q.redis.LLen("resque:failed").Result()
+	processed, failed, err := q.stats(ctx, qStats)
 	if err != nil {
-		return nil, 0, errors.WithStack(err)
+		return stats, err
 	}
-	return queues, llen, nil
+	stats.Stats.Processed = processed
+	stats.Stats.Failed = failed
+
+	members, err = q.redis.SMembers(qWorkers).Result()
+	if err != nil {
+		return stats, errors.WithStack(err)
+	}
+	stats.Workers = make(map[string]Worker, len(members))
+	for i := range members {
+		processed, failed, err := q.stats(ctx, members[i])
+		if err != nil {
+			return stats, err
+		}
+		stats.Workers[members[i]] = Worker{
+			Processed: processed,
+			Failed:    failed,
+		}
+	}
+
+	if err := q.redis.LRange(qFailed, 0, 20).ScanSlice(&stats.Failed); err != nil {
+		return stats, errors.WithStack(err)
+	}
+	return stats, nil
 }
 
-func (q *qredis) Workers() ([]Worker, int64, error) {
-	smembers, err := q.redis.SMembers("resque:workers").Result()
+func (q *qredis) stats(ctx context.Context, hash string) (int64, int64, error) {
+	hmget, err := q.redis.HMGet(hash, "processed", "failed").Result()
 	if err != nil {
-		return nil, 0, errors.WithStack(err)
+		return 0, 0, errors.WithStack(err)
 	}
 
-	if len(smembers) == 0 {
-		return nil, 0, nil
-	}
+	processedStr, _ := hmget[0].(string)
+	processed, _ := strconv.ParseInt(processedStr, 10, 64)
 
-	const prefix = "resque:worker:"
-	for i := range smembers {
-		smembers[i] = prefix + smembers[i]
-	}
-
-	mget, err := q.redis.MGet(smembers...).Result()
-	if err != nil {
-		return nil, 0, errors.WithStack(err)
-	}
-
-	var workers []Worker
-	for i := range mget {
-		if mget[i] == nil {
-			continue
-		}
-		var job jobprocessing
-		if err := json.Unmarshal([]byte(mget[i].(string)), &job); err != nil {
-			return nil, 0, errors.WithStack(err)
-		}
-		workers = append(workers, Worker{
-			Where: strings.TrimPrefix(smembers[i], prefix),
-			Queue: job.Queue,
-			RunAt: job.RunAt,
-			Class: job.Payload.Class,
-		})
-	}
-	return workers, int64(len(smembers)), nil
-}
-
-type jobprocessing struct {
-	Queue   string
-	RunAt   time.Time `json:"run_at"`
-	Payload struct {
-		Class string
-		Args  []struct{}
-	}
-}
-
-func (q *qredis) Failed(offset int64) ([]Failed, int64, error) {
-	const key = "resque:failed"
-	llen, err := q.redis.LLen(key).Result()
-	if err != nil {
-		return nil, 0, errors.WithStack(err)
-	}
-	lrange, err := q.redis.LRange(key, offset, offset+19).Result()
-	if err != nil {
-		return nil, 0, errors.WithStack(err)
-	}
-	failed := make([]Failed, len(lrange))
-	for i := range lrange {
-		var job jobfailed
-		if err := json.Unmarshal([]byte(lrange[i]), &job); err != nil {
-			return nil, 0, errors.WithStack(err)
-		}
-		failed[i] = Failed{
-			Worker:    job.Worker,
-			Queue:     job.Queue,
-			FailedAt:  job.FailedAt,
-			Class:     job.Payload.Class,
-			Arguments: job.Payload.Args,
-			Exception: job.Exception,
-			Error:     job.Error,
-			Backtrace: job.Backtrace,
-		}
-	}
-	return failed, llen, nil
-}
-
-type jobfailed struct {
-	FailedAt string `json:"failed_at"`
-	Payload  struct {
-		Class string
-		Args  []struct{}
-	}
-	Exception string
-	Error     string
-	Backtrace []string
-	Worker    string
-	Queue     string
+	failedStr, _ := hmget[1].(string)
+	failed, _ := strconv.ParseInt(failedStr, 10, 64)
+	return processed, failed, nil
 }
