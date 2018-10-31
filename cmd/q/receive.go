@@ -13,30 +13,29 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/yansal/q"
-	"github.com/yansal/q/cmd"
 	"golang.org/x/sync/errgroup"
 )
 
-func main() {
-	log.SetFlags(0)
+func receive() error {
+	handlers := map[string]q.Handler{
+		"debug": debugHandler,
+		"error": errorHandler,
+		"sleep": sleepHandler,
+	}
+	handlerNames := []string{"debug", "error", "sleep"}
 
-	queue := flag.String("queue", "", "name of the queue to receive from (required)")
-	handler := flag.String("handler", "debug", fmt.Sprintf("handler to run when a message is received -- can be one of %s", strings.Join(handlerNames, ", ")))
-	flag.Parse()
+	flagset := flag.NewFlagSet("", flag.ExitOnError)
+	queue := flagset.String("queue", "", "name of the queue to receive from (required)")
+	handler := flagset.String("handler", "debug", fmt.Sprintf("handler to run when a message is received -- can be one of %s", strings.Join(handlerNames, ", ")))
+	flagset.Parse(os.Args[2:])
 
 	h, ok := handlers[*handler]
 	if *queue == "" || !ok {
-		flag.Usage()
+		flagset.Usage()
 		os.Exit(2)
 	}
 
-	if err := main1(*queue, h); err != nil {
-		log.Fatalf("%+v", err)
-	}
-}
-
-func main1(queue string, handler q.Handler) error {
-	redis, err := cmd.NewRedis()
+	redis, err := newRedis()
 	if err != nil {
 		return err
 	}
@@ -49,22 +48,15 @@ func main1(queue string, handler q.Handler) error {
 		case <-ctx.Done():
 			return nil
 		case s := <-c:
-			return fmt.Errorf("%v", s)
+			return fmt.Errorf("signal: %s", s)
 		}
 	})
 	g.Go(func() error {
-		return q.New(redis).Receive(ctx, queue, handler)
+		return q.New(redis).Receive(ctx, *queue, h)
 	})
 
 	return g.Wait()
 }
-
-var handlers = map[string]q.Handler{
-	"debug": debugHandler,
-	"error": errorHandler,
-	"sleep": sleepHandler,
-}
-var handlerNames = []string{"debug", "error", "sleep"}
 
 func debugHandler(ctx context.Context, message q.Message) error {
 	log.Printf("%+v", message)
