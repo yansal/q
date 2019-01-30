@@ -1,23 +1,17 @@
+//go:generate go run generate_embedded.go
 package mux
 
 import (
 	"html/template"
 	"log"
 	"net/http"
-	"path/filepath"
-	"runtime"
 
 	"github.com/pkg/errors"
 	"github.com/yansal/q"
 )
 
 func New(q q.Q) (*http.ServeMux, error) {
-	// TODO: embed template directory
-	_, file, _, ok := runtime.Caller(0)
-	if !ok {
-		return nil, errors.New("couldn't locate templates directory")
-	}
-	template, err := template.New("").ParseGlob(filepath.Join(filepath.Dir(file), "templates/*.html"))
+	template, err := template.New("").Parse(indexHTML)
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
@@ -45,6 +39,6 @@ func handler(q q.Q, template *template.Template) handlerFunc {
 		if err != nil {
 			return err
 		}
-		return errors.WithStack(template.ExecuteTemplate(w, "index.html", stats))
+		return errors.WithStack(template.Execute(w, stats))
 	}
 }
