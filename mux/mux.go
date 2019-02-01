@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/pkg/errors"
 	"github.com/yansal/q"
@@ -65,10 +66,27 @@ func (h *handler) serveGET(w http.ResponseWriter, r *http.Request) error {
 
 func (h *handler) servePOST(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
-	queue := r.FormValue("queue")
-	payload := r.FormValue("payload")
-	if err := h.q.Send(ctx, queue, payload); err != nil {
-		return err
+	switch r.URL.Path {
+	case "/":
+		queue := r.FormValue("queue")
+		payload := r.FormValue("payload")
+		if err := h.q.Send(ctx, queue, payload); err != nil {
+			return err
+		}
+	case "/retry":
+		s := r.FormValue("id")
+		id, err := strconv.ParseInt(s, 10, 64)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return nil
+		}
+		if err := h.q.Retry(ctx, id); err != nil {
+			return err
+		}
+	default:
+		status := http.StatusNotFound
+		http.Error(w, http.StatusText(status), status)
+		return nil
 	}
 	http.Redirect(w, r, "", http.StatusFound)
 	return nil

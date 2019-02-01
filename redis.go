@@ -135,6 +135,19 @@ func (q *qredis) Send(ctx context.Context, queue, payload string) error {
 		}).Err())
 }
 
+func (q *qredis) Retry(ctx context.Context, id int64) error {
+	// TODO: use a transaction
+	var msg Message
+	if err := q.redis.LIndex(qFailed, id).Scan(&msg); err != nil {
+		return errors.WithStack(err)
+	}
+	msg.RetriedAt = newnow()
+	if err := q.redis.LSet(qFailed, id, msg).Err(); err != nil {
+		return errors.WithStack(err)
+	}
+	return q.Send(ctx, msg.Queue, msg.Payload)
+}
+
 func (q *qredis) Stats(ctx context.Context) (Stats, error) {
 	var stats Stats
 

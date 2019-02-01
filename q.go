@@ -9,6 +9,7 @@ import (
 type Q interface {
 	Receive(ctx context.Context, queue string, handler Handler) error
 	Send(ctx context.Context, queue, payload string) error
+	Retry(ctx context.Context, id int64) error
 	Stats(ctx context.Context) (Stats, error)
 }
 
@@ -19,6 +20,7 @@ type Message struct {
 	CreatedAt time.Time  `json:"created_at"`
 	RunAt     *time.Time `json:"run_at,omitempty"`
 	FailedAt  *time.Time `json:"failed_at,omitempty"`
+	RetriedAt *time.Time `json:"retried_at,omitempty"`
 	Error     string     `json:"error,omitempty"`
 }
 
