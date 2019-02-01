@@ -49,6 +49,8 @@ func help() error {
 
 func main() {
 	log.SetFlags(0)
+	log.SetPrefix("q: ")
+
 	flag.Usage = usage
 	flag.Parse()
 
