@@ -55,20 +55,12 @@ func (q *qredis) Receive(ctx context.Context, queue string, handler Handler) err
 		return errors.WithStack(err)
 	}
 	defer func() {
-		n, err := q.redis.SRem(qWorkers, self).Result()
-		if err != nil {
+		if _, err := q.redis.SRem(qWorkers, self).Result(); err != nil {
 			log.Printf("%+v", errors.WithStack(err))
-		}
-		if n != 1 {
-			log.Printf("%+v", errors.Errorf("expected 1 element to be removed, got %d", n))
 		}
 
-		n, err = q.redis.Del(self).Result()
-		if err != nil {
+		if _, err := q.redis.Del(self).Result(); err != nil {
 			log.Printf("%+v", errors.WithStack(err))
-		}
-		if n > 1 {
-			log.Printf("%+v", errors.Errorf("expected 1 element to be removed, got %d", n))
 		}
 	}()
 
