@@ -104,7 +104,7 @@ func (q *qredis) Receive(ctx context.Context, queue string, handler Handler) err
 
 		// TODO: set message.RunAt?
 
-		if err := handler(ctx, message); err != nil {
+		if err := handler(ctx, message.Payload); err != nil {
 			now := time.Now()
 			message := Message{
 				Payload:   message.Payload,

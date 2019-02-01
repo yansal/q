@@ -12,7 +12,7 @@ type Q interface {
 	Stats(ctx context.Context) (Stats, error)
 }
 
-type Handler func(ctx context.Context, message Message) error
+type Handler func(ctx context.Context, payload string) error
 type Message struct {
 	Payload   string     `json:"payload"`
 	CreatedAt time.Time  `json:"created_at"`

@@ -58,17 +58,17 @@ func receive() error {
 	return g.Wait()
 }
 
-func debugHandler(ctx context.Context, message q.Message) error {
-	log.Printf("%+v", message)
+func debugHandler(ctx context.Context, payload string) error {
+	log.Print(payload)
 	return nil
 }
 
-func errorHandler(ctx context.Context, message q.Message) error {
-	return errors.Errorf("%+v", message.Payload)
+func errorHandler(ctx context.Context, payload string) error {
+	return errors.New(payload)
 }
 
-func sleepHandler(ctx context.Context, message q.Message) error {
-	duration, err := time.ParseDuration(message.Payload)
+func sleepHandler(ctx context.Context, payload string) error {
+	duration, err := time.ParseDuration(payload)
 	if err != nil {
 		return errors.WithStack(err)
 	}
