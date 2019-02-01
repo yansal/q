@@ -67,7 +67,7 @@ func (h *handler) servePOST(w http.ResponseWriter, r *http.Request) error {
 	ctx := r.Context()
 	queue := r.FormValue("queue")
 	payload := r.FormValue("payload")
-	if err := h.q.Publish(ctx, queue, payload); err != nil {
+	if err := h.q.Send(ctx, queue, payload); err != nil {
 		return err
 	}
 	http.Redirect(w, r, "", http.StatusFound)

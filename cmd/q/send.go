@@ -8,10 +8,10 @@ import (
 	"github.com/yansal/q"
 )
 
-func publish() error {
+func send() error {
 	flagset := flag.NewFlagSet("", flag.ExitOnError)
-	queue := flagset.String("queue", "", "name of the queue to publish to (required)")
-	payload := flagset.String("payload", "", "payload to publish (required)")
+	queue := flagset.String("queue", "", "name of the queue to send to (required)")
+	payload := flagset.String("payload", "", "payload to send (required)")
 	flagset.Parse(os.Args[2:])
 
 	if *queue == "" || *payload == "" {
@@ -23,5 +23,5 @@ func publish() error {
 	if err != nil {
 		return err
 	}
-	return q.New(redis).Publish(context.Background(), *queue, *payload)
+	return q.New(redis).Send(context.Background(), *queue, *payload)
 }

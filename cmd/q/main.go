@@ -23,8 +23,8 @@ func init() {
 	cmds = map[string]cmd{
 		"help":      {run: help, usage: "print help message"},
 		"dashboard": {run: dashboard, usage: "run dashboard http server"},
-		"publish":   {run: publish, usage: "publish a message to a queue"},
 		"receive":   {run: receive, usage: "run queue receiver"},
+		"send":      {run: send, usage: "send a message to a queue"},
 		"stats":     {run: stats, usage: "print stats"},
 	}
 }

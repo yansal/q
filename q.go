@@ -7,8 +7,8 @@ import (
 )
 
 type Q interface {
-	Publish(ctx context.Context, queue, payload string) error
 	Receive(ctx context.Context, queue string, handler Handler) error
+	Send(ctx context.Context, queue, payload string) error
 	Stats(ctx context.Context) (Stats, error)
 }
 

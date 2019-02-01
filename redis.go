@@ -30,18 +30,6 @@ type qredis struct {
 	redis *redis.Client
 }
 
-func (q *qredis) Publish(ctx context.Context, queue, payload string) error {
-	self := qQueue + ":" + queue
-	if _, err := q.redis.SAdd(qQueues, self).Result(); err != nil {
-		return errors.WithStack(err)
-	}
-	return errors.WithStack(
-		q.redis.LPush(self, Message{
-			Payload:   payload,
-			CreatedAt: time.Now(),
-		}).Err())
-}
-
 func (q *qredis) Receive(ctx context.Context, queue string, handler Handler) error {
 	hostname, err := os.Hostname()
 	if err != nil {
@@ -137,6 +125,18 @@ func (q *qredis) Receive(ctx context.Context, queue string, handler Handler) err
 			return errors.WithStack(err)
 		}
 	}
+}
+
+func (q *qredis) Send(ctx context.Context, queue, payload string) error {
+	self := qQueue + ":" + queue
+	if _, err := q.redis.SAdd(qQueues, self).Result(); err != nil {
+		return errors.WithStack(err)
+	}
+	return errors.WithStack(
+		q.redis.LPush(self, Message{
+			Payload:   payload,
+			CreatedAt: time.Now(),
+		}).Err())
 }
 
 func (q *qredis) Stats(ctx context.Context) (Stats, error) {
