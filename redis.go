@@ -62,7 +62,7 @@ func (q *qredis) Receive(ctx context.Context, queue string, handler Handler) err
 	for {
 		go func() {
 			var message Message
-			err := q.redis.BRPopLPush(qQueue+":"+queue, processing, 0).Scan(&message)
+			err := q.redis.BRPopLPush(queue, processing, 0).Scan(&message)
 			brpoplpush <- msg{
 				message: message,
 				err:     err,
@@ -124,14 +124,13 @@ func newnow() *time.Time {
 }
 
 func (q *qredis) Send(ctx context.Context, queue, payload string) error {
-	self := qQueue + ":" + queue
-	if _, err := q.redis.SAdd(qQueues, self).Result(); err != nil {
+	if _, err := q.redis.SAdd(qQueues, queue).Result(); err != nil {
 		return errors.WithStack(err)
 	}
 	return errors.WithStack(
-		q.redis.LPush(self, Message{
+		q.redis.LPush(queue, Message{
 			Payload:   payload,
-			Queue:     self,
+			Queue:     queue,
 			CreatedAt: time.Now(),
 		}).Err())
 }
