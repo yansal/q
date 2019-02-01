@@ -48,15 +48,23 @@ func receive() error {
 		case <-ctx.Done():
 			return nil
 		case s := <-c:
-			return fmt.Errorf("signal: %s", s)
+			return sentinelError{s}
 		}
 	})
 	g.Go(func() error {
 		return q.New(redis).Receive(ctx, *queue, h)
 	})
 
-	return g.Wait()
+	err = g.Wait()
+	if _, ok := err.(sentinelError); ok {
+		return nil
+	}
+	return err
 }
+
+type sentinelError struct{ os.Signal }
+
+func (e sentinelError) Error() string { return fmt.Sprint(e.Signal) }
 
 func debugHandler(ctx context.Context, payload string) error {
 	log.Print(payload)
