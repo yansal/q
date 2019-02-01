@@ -73,8 +73,7 @@ func (q *qredis) Receive(ctx context.Context, queue string, handler Handler) err
 	for {
 		go func() {
 			var message Message
-			err := errors.WithStack(
-				q.redis.BRPopLPush(qQueue+":"+queue, processing, 0).Scan(&message))
+			err := q.redis.BRPopLPush(qQueue+":"+queue, processing, 0).Scan(&message)
 			brpoplpush <- msg{
 				message: message,
 				err:     err,
@@ -89,7 +88,7 @@ func (q *qredis) Receive(ctx context.Context, queue string, handler Handler) err
 			if err := msg.err; err == redis.Nil {
 				continue
 			} else if err != nil {
-				return err
+				return errors.WithStack(err)
 			}
 			message = msg.message
 		}
