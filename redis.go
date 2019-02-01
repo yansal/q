@@ -13,6 +13,7 @@ import (
 )
 
 const (
+	// TODO: allow to configure the "q" namespace?
 	qFailed     = "q:failed"
 	qProcessing = "q:processing"
 	qQueue      = "q:queues"
