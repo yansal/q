@@ -1,4 +1,5 @@
 //go:generate go run generate_embedded.go
+
 package mux
 
 import (
