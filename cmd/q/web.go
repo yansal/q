@@ -10,7 +10,7 @@ import (
 	qmux "github.com/yansal/q/mux"
 )
 
-func dashboard() error {
+func web() error {
 	redis, err := newRedis()
 	if err != nil {
 		return err
