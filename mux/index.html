@@ -40,14 +40,18 @@
 <table border="1">
     <tr>
         <th align="center">payload</th>
+        <th align="center">queue</th>
         <th align="center">created at</th>
+        <th align="center">run at</th>
         <th align="center">failed at</th>
         <th align="center">error</th>
     </tr>
     {{range $key, $value := .Failed}}
     <tr valign="top">
         <td align="left">{{$value.Payload}}</td>
+        <td align="left">{{$value.Queue}}</td>
         <td align="left">{{$value.CreatedAt}}</td>
+        <td align="left">{{$value.RunAt}}</td>
         <td align="left">{{$value.FailedAt}}</td>
         <td align="left">
             <pre>{{$value.Error}}</pre>

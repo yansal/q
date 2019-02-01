@@ -82,15 +82,9 @@ func (q *qredis) Receive(ctx context.Context, queue string, handler Handler) err
 			message = msg.message
 		}
 
-		// TODO: set message.RunAt?
-
+		message.RunAt = newnow()
 		if err := handler(ctx, message.Payload); err != nil {
-			now := time.Now()
-			message := Message{
-				Payload:   message.Payload,
-				CreatedAt: message.CreatedAt,
-				FailedAt:  &now,
-			}
+			message.FailedAt = newnow()
 
 			if _, ok := err.(interface{ StackTrace() errors.StackTrace }); ok {
 				message.Error = fmt.Sprintf("%+v", err)
@@ -111,12 +105,8 @@ func (q *qredis) Receive(ctx context.Context, queue string, handler Handler) err
 			}
 		}
 
-		n, err := q.redis.LRem(processing, 1, message).Result()
-		if err != nil {
+		if _, err := q.redis.Del(processing).Result(); err != nil {
 			return errors.WithStack(err)
-		}
-		if n != 1 {
-			return errors.Errorf("expected 1 element to be removed, got %d", n)
 		}
 
 		if err := q.redis.HIncrBy(self, "processed", 1).Err(); err != nil {
@@ -128,6 +118,11 @@ func (q *qredis) Receive(ctx context.Context, queue string, handler Handler) err
 	}
 }
 
+func newnow() *time.Time {
+	now := time.Now()
+	return &now
+}
+
 func (q *qredis) Send(ctx context.Context, queue, payload string) error {
 	self := qQueue + ":" + queue
 	if _, err := q.redis.SAdd(qQueues, self).Result(); err != nil {
@@ -136,6 +131,7 @@ func (q *qredis) Send(ctx context.Context, queue, payload string) error {
 	return errors.WithStack(
 		q.redis.LPush(self, Message{
 			Payload:   payload,
+			Queue:     self,
 			CreatedAt: time.Now(),
 		}).Err())
 }

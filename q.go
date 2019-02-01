@@ -15,7 +15,9 @@ type Q interface {
 type Handler func(ctx context.Context, payload string) error
 type Message struct {
 	Payload   string     `json:"payload"`
+	Queue     string     `json:"queue,omitempty"`
 	CreatedAt time.Time  `json:"created_at"`
+	RunAt     *time.Time `json:"run_at,omitempty"`
 	FailedAt  *time.Time `json:"failed_at,omitempty"`
 	Error     string     `json:"error,omitempty"`
 }
