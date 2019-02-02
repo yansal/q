@@ -7,11 +7,12 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/yansal/q"
+	"github.com/yansal/q/cmd"
 	qmux "github.com/yansal/q/mux"
 )
 
 func web() error {
-	redis, err := newRedis()
+	redis, err := cmd.NewRedis()
 	if err != nil {
 		return err
 	}

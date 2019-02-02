@@ -14,6 +14,17 @@ type Q interface {
 }
 
 type Handler func(ctx context.Context, payload string) error
+
+type Stats struct {
+	Failed []Message
+	Queues map[string]int64
+	Stats  struct {
+		Processed int64
+		Failed    int64
+	}
+	Workers map[string]Worker
+}
+
 type Message struct {
 	Payload   string     `json:"payload"`
 	Queue     string     `json:"queue,omitempty"`
@@ -26,16 +37,6 @@ type Message struct {
 
 func (message Message) MarshalBinary() ([]byte, error)     { return json.Marshal(message) }
 func (message *Message) UnmarshalBinary(data []byte) error { return json.Unmarshal(data, message) }
-
-type Stats struct {
-	Failed []Message
-	Queues map[string]int64
-	Stats  struct {
-		Processed int64
-		Failed    int64
-	}
-	Workers map[string]Worker
-}
 
 type Worker struct {
 	Processed int64

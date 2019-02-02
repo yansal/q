@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/yansal/q"
+	"github.com/yansal/q/cmd"
 )
 
 func send() error {
@@ -19,7 +20,7 @@ func send() error {
 		os.Exit(2)
 	}
 
-	redis, err := newRedis()
+	redis, err := cmd.NewRedis()
 	if err != nil {
 		return err
 	}

@@ -13,6 +13,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/yansal/q"
+	"github.com/yansal/q/cmd"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -35,7 +36,7 @@ func receive() error {
 		os.Exit(2)
 	}
 
-	redis, err := newRedis()
+	redis, err := cmd.NewRedis()
 	if err != nil {
 		return err
 	}

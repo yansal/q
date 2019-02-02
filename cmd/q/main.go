@@ -6,21 +6,17 @@ import (
 	"log"
 	"os"
 	"sort"
-	"strconv"
-
-	"github.com/go-redis/redis"
-	"github.com/pkg/errors"
 )
 
-type cmd struct {
+type subcmd struct {
 	run   func() error
 	usage string
 }
 
-var cmds map[string]cmd
+var cmds map[string]subcmd
 
 func init() {
-	cmds = map[string]cmd{
+	cmds = map[string]subcmd{
 		"help":    {run: help, usage: "print help message"},
 		"receive": {run: receive, usage: "run queue receiver"},
 		"send":    {run: send, usage: "send a message to a queue"},
@@ -67,22 +63,4 @@ func main() {
 	if err := cmd.run(); err != nil {
 		log.Fatalf("%+v", err)
 	}
-}
-
-func newRedis() (*redis.Client, error) {
-	redisURL := os.Getenv("REDIS_URL")
-	if redisURL == "" {
-		redisURL = "redis://:6379"
-	}
-
-	redisOpts, err := redis.ParseURL(redisURL)
-	if err != nil {
-		return nil, errors.WithStack(err)
-	}
-
-	poolsize, _ := strconv.Atoi(os.Getenv("REDIS_POOL_SIZE"))
-	redisOpts.PoolSize = poolsize
-
-	redis := redis.NewClient(redisOpts)
-	return redis, errors.WithStack(redis.Ping().Err())
 }

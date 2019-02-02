@@ -5,10 +5,11 @@ import (
 	"fmt"
 
 	"github.com/yansal/q"
+	"github.com/yansal/q/cmd"
 )
 
 func stats() error {
-	redis, err := newRedis()
+	redis, err := cmd.NewRedis()
 	if err != nil {
 		return err
 	}
